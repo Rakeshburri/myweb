@@ -55,7 +55,7 @@
 		
 		<repository>
 		    <id>nexusRepo</id>
-		    <url>http://35.74.70.170:8081/repository/sample-releases/</url>
+		    <url>http://35.74.70.170:8081/repository/rakesh-releases/</url>
 		</repository>
   	</distributionManagement>
 	
