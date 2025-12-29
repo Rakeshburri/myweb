@@ -1,0 +1,65 @@
+pipeline{
+    agent any
+    environment{
+        PATH = "/opt/maven3/bin:$PATH"
+    }
+    stages{
+        stage("Git Checkout"){
+            steps{
+                git credentialsId: 'javahome2', url: 'https://github.com/Rakeshburri/myweb.git'
+            }
+        }
+        stage('Static Code Analysis') {
+      environment {
+        SONAR_URL = "http://35.77.76.218:9000"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+          sh 'mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+        }
+      }
+    }
+    stage("Maven Build"){
+            steps{
+                sh "mvn clean package"
+                
+            }
+        }
+        stage('Upload War To Nexus'){
+            steps{
+                 nexusArtifactUploader artifacts: [
+
+                   [
+                     artifactId: 'myweb', 
+                      classifier: '', 
+                      file: 'target/myweb-8.2.0.war', 
+                      type: 'war'
+                     ]
+                   ],     
+                 credentialsId: 'sonar', 
+                 groupId: 'in.javahome', 
+                 nexusUrl: '57.183.35.176:8081', 
+                 nexusVersion: 'nexus3', 
+                 protocol: 'http', 
+                 repository: 'sample-releases',
+                 version: '8.2.0'  
+              }
+            }
+             stage("deploy-dev"){
+            steps{
+                sshagent(['tomcat-new']) {
+                sh """
+                    scp -o StrictHostKeyChecking=no target/myweb-8.2.0.war  ec2-user@18.183.110.5:/home/ec2-user/apache-tomcat-9.0.113/webapps/
+                    
+                    ssh ec2-user@18.183.110.5 /home/ec2-user/apache-tomcat-9.0.113/bin/shutdown.sh
+                    
+                    ssh ec2-user@18.183.110.5 /home/ec2-user/apache-tomcat-9.0.113/bin/startup.sh
+                
+                """
+            }
+            
+            }
+        }
+
+    }
+}
